@@ -29,8 +29,11 @@ Unfortunately this mechanism is implemented often very different by different OE
 This module was developed and tested only on the following device:
 
 - Device **LeEco LePro 3 (LEX720)**
-- Firmware version: **5.8.018S**
+- Firmware version: **EUI 5.8.018S** (Android 6.0.1)
 - Build-ID: **WAXCNFN5801811012S**
 
 This means, it may or may not work on other devices or even other software versions for the same device. Please use at your own risk.
 
+
+### Further information:
+See also the related thread on the XDA developers forum:<br>[http://forum.xda-developers.com/le-pro3/development/mod-patch-smartcardservice-sim-card-t3502369](http://forum.xda-developers.com/le-pro3/development/mod-patch-smartcardservice-sim-card-t3502369)
