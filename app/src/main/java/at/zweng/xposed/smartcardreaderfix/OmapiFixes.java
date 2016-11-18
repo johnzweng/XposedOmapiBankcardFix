@@ -47,7 +47,6 @@ public class OmapiFixes implements IXposedHookLoadPackage {
     protected static final XC_MethodHook getTerminalHook = new de.robv.android.xposed.XC_MethodHook() {
         @Override
         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-            String methodName = param.method.getName(); // "internalTransmit"
             String readerName = (String) param.args[0];
             if (readerName == null) {
                 // change argument to "SIM1":
