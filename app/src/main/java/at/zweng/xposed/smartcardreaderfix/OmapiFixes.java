@@ -1,6 +1,8 @@
 package at.zweng.xposed.smartcardreaderfix;
 
 import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
 
 import java.lang.reflect.Method;
 
@@ -51,10 +53,10 @@ public class OmapiFixes implements IXposedHookLoadPackage {
             if (readerName == null) {
                 // change argument to "SIM1":
                 param.args[0] = "SIM1";
-                log(LOG_PREFIX + "getTerminal() --> APPLIED WORKAROUND: requested reader name was 'null' value, we changed it to 'SIM1'. :)");
+                log(LOG_PREFIX + "getTerminal() --> requested reader name was 'null' value, we changed it to 'SIM1'. :)");
             } else if ("SIM2".equalsIgnoreCase(readerName)) {
                 param.args[0] = "SIM1";
-                log(LOG_PREFIX + "getTerminal() --> APPLIED WORKAROUND: requested reader name was 'SIM2', we changed it to 'SIM1'. :)");
+                log(LOG_PREFIX + "getTerminal() --> requested reader name was 'SIM2', we changed it to 'SIM1'. :)");
             }
         }
     };
@@ -82,6 +84,8 @@ public class OmapiFixes implements IXposedHookLoadPackage {
         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
             //String pkg = (String) param.args[0];
             Intent seIntent = (Intent) param.args[1];
+            Bundle extras = seIntent.getExtras();
+
             // Just logging the Intent for debugging:
             // log(LOG_PREFIX + "  beforeHookedMethod 'deliverSeIntent':");
             // log(LOG_PREFIX + "     - pkg = '" + pkg + "'");
@@ -107,43 +111,64 @@ public class OmapiFixes implements IXposedHookLoadPackage {
             // }
 
 
-            // In the first version I only changed the action for packages starting with "at.psa", but as
-            // LeEco doesn't follow the GSMA standard here, I decided to change it for all apps:
-
-            //if (pkg.startsWith("at.psa") && "com.nxp.action.TRANSACTION_DETECTED".equals(seIntent.getAction())) {
-
+            // 1) if the intent has the wrong action:
             if ("com.nxp.action.TRANSACTION_DETECTED".equals(seIntent.getAction())) {
                 // set the new action
                 seIntent.setAction("com.gsma.services.nfc.action.TRANSACTION_EVENT");
-                log(LOG_PREFIX + "deliverSeIntent() --> APPLIED WORKAROUND: changed Intent action to: com.gsma.services.nfc.action.TRANSACTION_EVENT");
+                log(LOG_PREFIX + "deliverSeIntent() --> changed Intent action to: com.gsma.services.nfc.action.TRANSACTION_EVENT");
+            }
+
+            // 2) if the intent has no data Uri (and we have all the needed infos to set it):
+            Uri uri = seIntent.getData();
+            String seName = extras.getString("com.android.nfc_extras.extra.SE_NAME");
+            byte[] aid = extras.getByteArray("com.nxp.extra.AID");
+            if (uri == null && seName != null && aid != null) {
+                seIntent.setData(Uri.parse("nfc://secure:0/" + seName + "/" + bytesToHex(aid)));
+                log(LOG_PREFIX + "deliverSeIntent() --> set data Uri to: " + seIntent.getData().toString());
+            }
+
+            // 3) check if the GSMA extra AID is set:
+            byte[] gsmaExtrasAid = extras.getByteArray("com.gsma.services.nfc.extra.AID");
+            byte[] nxpExtrasAid = extras.getByteArray("com.nxp.extra.AID");
+            if (gsmaExtrasAid == null && nxpExtrasAid != null) {
+                extras.putByteArray("com.gsma.services.nfc.extra.AID", nxpExtrasAid);
+                log(LOG_PREFIX + "deliverSeIntent() --> added 'com.gsma.services.nfc.extra.AID': " + bytesToHex(nxpExtrasAid));
+            }
+
+            // 4) check if the GSMA extra DATA is set:
+            byte[] gsmaExtrasData = extras.getByteArray("com.gsma.services.nfc.extra.DATA");
+            byte[] nxpExtrasData = extras.getByteArray("com.nxp.extra.DATA");
+            if (gsmaExtrasData == null && nxpExtrasData != null) {
+                extras.putByteArray("com.gsma.services.nfc.extra.DATA", nxpExtrasData);
+                log(LOG_PREFIX + "deliverSeIntent() --> added 'com.gsma.services.nfc.extra.DATA': " + bytesToHex(nxpExtrasData));
             }
         }
     };
 
-    // /**
-    //  * Helper method, returns String representation of byte array.
-    //  * Was only used for logging the intent extras..
-    //  *
-    //  * @param bytes
-    //  * @return
-    //  */
-    // private static String bytesToHex(byte[] bytes) {
-    //     if (bytes == null) {
-    //         return "<null>";
-    //     }
-    //     if (bytes.length == 0) {
-    //         return "[]";
-    //     }
-    //     final char[] hexArray = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
-    //     char[] hexChars = new char[bytes.length * 2];
-    //     int v;
-    //     for (int j = 0; j < bytes.length; j++) {
-    //         v = bytes[j] & 0xFF;
-    //         hexChars[j * 2] = hexArray[v >>> 4];
-    //         hexChars[j * 2 + 1] = hexArray[v & 0x0F];
-    //     }
-    //     return new String(hexChars);
-    // }
+
+    /**
+     * Helper method, returns hex-string representation of byte array.
+     *
+     * @param bytes
+     * @return
+     */
+    private static String bytesToHex(byte[] bytes) {
+        if (bytes == null) {
+            return "<null>";
+        }
+        if (bytes.length == 0) {
+            return "[]";
+        }
+        final char[] hexArray = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+        char[] hexChars = new char[bytes.length * 2];
+        int v;
+        for (int j = 0; j < bytes.length; j++) {
+            v = bytes[j] & 0xFF;
+            hexChars[j * 2] = hexArray[v >>> 4];
+            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+        }
+        return new String(hexChars);
+    }
 
     /**
      * Place hooks at packages load time
