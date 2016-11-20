@@ -13,6 +13,6 @@ I
 ## Version 1.0:
 
 - first published version
-- **Reader API**: forces that for all Open Mobile API rquests SIM1 will be used, even if the app requests SIM2
+- **Reader API**: forces that for all Open Mobile API rquests `SIM1` will be used, even if the app requests `SIM2` (because only SIM1 slot is connected to the NFC chip over SWP). Take care that you insert the SIM you want to use with OMAPI in SIM1 slot.
 - **EVT_TRANSACTION**: changes the action string of the Intent which will be broadcasted after offhost transactions to the GSMA standard `com.nxp.action.TRANSACTION_DETECTED `
 
