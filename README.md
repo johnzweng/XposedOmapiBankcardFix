@@ -13,7 +13,9 @@ This is a module for the [Xposed Framework](http://repo.xposed.info/). You need 
 This module does two things:
 
 1. **Always use "SIM1":**<br>
-in a Dual-SIM phone, which has the "OMAPI" (OpenMobile API) installed, (which is also known as *SmartcardService*), it overrides the `getTerminal()` method, so that the method always returns the `SIM1` terminal, even if the calling application explicitely [requested SIM2](/app/src/main/java/at/zweng/xposed/smartcardreaderfix/OmapiFixes.java#L55) or [specified *null*](/app/src/main/java/at/zweng/xposed/smartcardreaderfix/OmapiFixes.java#L51) as the terminal name.
+in a Dual-SIM phone, which has the "OMAPI" (OpenMobile API) installed, (which is also known as *SmartcardService*), it overrides the `getTerminal()` method, so that the method always returns the `SIM1` terminal, even if the calling application explicitely [requested SIM2](/app/src/main/java/at/zweng/xposed/smartcardreaderfix/OmapiFixes.java#L57) or [specified *null*](/app/src/main/java/at/zweng/xposed/smartcardreaderfix/OmapiFixes.java#L53) as the terminal name.
+<br>
+This workaround makes it possible to use OMAPI with apps that do not assume the presence of two USIM-slots and avoid that they request the wrong reader.
 <br>
 <br>
 
@@ -21,7 +23,11 @@ in a Dual-SIM phone, which has the "OMAPI" (OpenMobile API) installed, (which is
 In an Offhost NFC transaction the Android system and all installed apps are not involved at all. The NFC communication directly goes between the NFC chip and the SIM card (over the so-called SWP connection) and never reaches the application processor of the phone. <br><br>
 To still be able to display transaction results within an app, the applet in the SIM-card can issue a so-called `EVT_TRANSACTION` event (as specified in the [GSMA NFC Handset APIs Requirement Specification in 4.10 on page 12](http://www.gsma.com/digitalcommerce/wp-content/uploads/2013/12/GSMA-NFC05-NFC-Handset-APIs-Requirement-Specification-version-4-1.pdf)) which will be forwarded by the NFC chip to the application processor. There the NFC service should take care of this event and broadcasts it as an Intent to the relevant app.<br><br>
 Unfortunately this mechanism is implemented often very different by different OEMs. The phone for which this module was developed sends an Intent with the action `com.nxp.action.TRANSACTION_DETECTED`. So this module hooks the method where this Intent gets sent [and replaces the action string to the GSMA standard](/app/src/main/java/at/zweng/xposed/smartcardreaderfix/OmapiFixes.java#L117) `com.gsma.services.nfc.action.TRANSACTION_EVENT`.
+<br>
+<br>
+If the necessary data is available this module also [sets the data URI of the intent](/app/src/main/java/at/zweng/xposed/smartcardreaderfix/OmapiFixes.java#L126) to the value which is proposed in the GSMA document on page 13 as well as the two event data extra fields [`com.gsma.services.nfc.extra.AID`](/app/src/main/java/at/zweng/xposed/smartcardreaderfix/OmapiFixes.java#L134) and [`com.gsma.services.nfc.extra.DATA`](/app/src/main/java/at/zweng/xposed/smartcardreaderfix/OmapiFixes.java#L142).
 
+<br>
 
 
 ### Tested on this device:
